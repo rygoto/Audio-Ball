@@ -72,11 +72,11 @@ function AudioSphere3() {
         pipeline.bloomScale = 20; // ブルームのサイズを調整*/
         //End Create PostProcess
 
-        /*scene.createDefaultXRExperienceAsync({
+        scene.createDefaultXRExperienceAsync({
             uiOptions: {
                 sessionMode: 'immersive-ar',
             },
-        });*/
+        });
 
         //Create Render excute function
         const runRenderLoop = () => {
