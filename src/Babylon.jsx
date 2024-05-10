@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Engine, Scene, ArcRotateCamera, HemisphericLight, Vector3, Mesh, MeshBuilder, ActionManager, ExecuteCodeAction, WebXRState, WebXRDomOverlay } from '@babylonjs/core';
+import { Engine, Scene, ArcRotateCamera, HemisphericLight, Vector3, Mesh, MeshBuilder, ActionManager, ExecuteCodeAction, WebXRState, WebXRDomOverlay, AxesViewer, StandardMaterial, Color3 } from '@babylonjs/core';
 
 function BabylonScene() {
     const canvasRef = useRef(null);
@@ -8,24 +8,47 @@ function BabylonScene() {
         if (canvasRef.current) {
             const engine = new Engine(canvasRef.current, true);
             const scene = new Scene(engine);
-            const camera = new ArcRotateCamera("camera", Math.PI / 2, Math.PI / 2, 2, new Vector3(0, 0, 5), scene);
-            camera.attachControl(canvasRef.current, true);
             const light = new HemisphericLight("light", new Vector3(1, 1, 0), scene);
-            const sphere = Mesh.CreateSphere("sphere", 16, 2, scene);
+            const spheres = [];
+            const audioFiles = ['2.mp3', '3.mp3', '4.mp3', '5.mp3', '6.mp3'];
 
-            sphere.actionManager = new ActionManager(scene);
-            sphere.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPickTrigger, () => {
 
-            }));
+            for (let i = 0; i < 5; i++) {
+                const sphere = MeshBuilder.CreateSphere("sphere" + i, { diameter: 1, segments: 16 }, scene);
+                sphere.position = new Vector3(-2 + i * 2, 2, 18);
+                const material = new StandardMaterial("material" + i, scene);
+                sphere.material = material;
+                sphere.actionManager = new ActionManager(scene);
+                const audio = new Audio(audioFiles[i]);
+                sphere.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPickTrigger, () => {
+                    // ここにトリガーされたときのアクションを記述
+                    if (!audio.paused) {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    } else {
+                        audio.play();
+                    }
+                    sphere.material.diffuseColor = new Color3(Math.random(), Math.random(), Math.random());
+                }));
+                spheres.push(sphere);
+            }
 
-            const xr = scene.createDefaultXRExperienceAsync({
+            scene.createDefaultXRExperienceAsync({
                 uiOptions: {
                     sessionMode: 'immersive-ar',
                 },
+            }).then((experience) => {
+                camera = experience.baseExperience.camera;  // XRカメラを使用
+                //sphere.position = camera.getFrontPosition(2);  // カメラの前方2mに配置
             });
+
+            const axesViewer = new AxesViewer(scene);
 
             engine.runRenderLoop(() => {
                 scene.render();
+                spheres.forEach(sphere => {
+                    sphere.position.z -= 0.015;
+                });
             });
 
             return () => {
