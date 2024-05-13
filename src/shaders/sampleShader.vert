@@ -8,6 +8,8 @@ attribute vec3 normal;
 uniform mat4 worldViewProjection;
 
 uniform float u_low_frequency;
+uniform float u_high_frequency;
+uniform float u_all_frequency;
 
 uniform float u_time;
 
@@ -107,7 +109,7 @@ float pnoise(vec3 P, vec3 rep)
 
 void main() {
     float noise = 3.0 * pnoise(position + u_time, vec3(10.0));
-    float displacement = (u_low_frequency / 30.) * (noise / 10.);
+    float displacement = (u_all_frequency / 10.) * (noise / 10./2.);
     vec3 newPosition = position + normal * displacement;
     //vec3 newPosition = position + displacement;
     vec4 p = vec4(newPosition, 1.0);

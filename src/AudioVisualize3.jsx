@@ -13,6 +13,8 @@ import {
     Effect,
     Material,
     DefaultRenderingPipeline,
+    ActionManager,
+    ExecuteCodeAction
 } from '@babylonjs/core';
 import '@babylonjs/loaders';
 import { guess } from 'web-audio-beat-detector';
@@ -44,8 +46,17 @@ function AudioSphere3() {
         sphereRef.current = sphere;
         //sphere.material.alpha = 0.0;
 
+        //Create Click Audio Play
+        sphere.actionManager = new ActionManager(scene);
+        sphere.actionManager.registerAction(
+            new ExecuteCodeAction(ActionManager.OnPickTrigger, () => {
+                startAudio();
+            })
+        );
+        //End Create Click Audio Play
+
         //Create LawFrequency Icosphere and ShaderMaterial
-        const icosphere = MeshBuilder.CreateIcoSphere("icoSphere", { radius: 4, subdivisions: 3 }, scene);
+        const icosphere = MeshBuilder.CreateIcoSphere("icoSphere", { radius: 4, subdivisions: 5 }, scene);
         const shaderMaterial = new ShaderMaterial(
             'sampleShader',
             scene,
@@ -79,6 +90,7 @@ function AudioSphere3() {
         });
 
         //Create Render excute function
+        let previouseLowFreqAverage = 0;
         const runRenderLoop = () => {
             currentTime += timeIncrement;
             shaderMaterial.setFloat("u_time", currentTime);  // Update shader time   
@@ -88,12 +100,18 @@ function AudioSphere3() {
                 const dataArray = new Uint8Array(bufferLength);
                 analyser.getByteFrequencyData(dataArray);
 
+                let allFreqAverage = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
                 let lowFreqAverage = dataArray.slice(0, bufferLength / 2).reduce((a, b) => a + b, 0) / (bufferLength / 2);
                 let highFreqAverage = dataArray.slice(bufferLength / 2).reduce((a, b) => a + b, 0) / (bufferLength / 2);
-                console.log("lowFreqAverage: ", lowFreqAverage);
+                let changLowFreq = Math.abs(lowFreqAverage - previouseLowFreqAverage);
+                let lowFreqAverageEmphasis = changLowFreq * 10.0 * 2.0;
+                previouseLowFreqAverage = lowFreqAverage;
+                console.log("lowFreqAverage: ", lowFreqAverageEmphasis);
                 console.log("highFreqAverage: ", highFreqAverage);
-                shaderMaterial.setFloat("u_low_frequency", lowFreqAverage);
+                console.log("allFreqAverage: ", allFreqAverage);
+                shaderMaterial.setFloat("u_low_frequency", lowFreqAverageEmphasis);
                 shaderMaterial.setFloat("u_high_frequency", highFreqAverage);
+                shaderMaterial.setFloat("u_all_frequency", allFreqAverage);
                 shaderMaterial.setFloat("u_red", lowFreqAverage / 255);
                 shaderMaterial.setFloat("u_green", lowFreqAverage / 255);
                 shaderMaterial.setFloat("u_blue", lowFreqAverage / 255);
@@ -146,7 +164,7 @@ function AudioSphere3() {
 
                 // BPM Scale Animation
                 const frameRate = 60;
-                const animationTime = 60 / detectedBpm * 2;
+                const animationTime = 60 / detectedBpm * 2 / 2;
                 const totalFrames = frameRate * animationTime;
 
                 const animations = ['x', 'y', 'z'].map(axis => {
@@ -159,7 +177,7 @@ function AudioSphere3() {
                     );
                     const keyFrames = [
                         { frame: 0, value: 0.7 },
-                        { frame: totalFrames / 2, value: 1.5 },
+                        { frame: totalFrames * 0.1 / 2, value: 1.5 },
                         { frame: totalFrames, value: 0.7 }
                     ];
                     animation.setKeys(keyFrames);
