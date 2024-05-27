@@ -19,7 +19,7 @@ import { guess } from 'web-audio-beat-detector';
 import vertShader from './shaders/sampleShader.vert?raw';
 import fragShader from './shaders/sampleShader.frag?raw';
 
-function AudioSphere5() {
+function AudioSphere6() {
     const canvasRef = useRef(null);
     const audioContext = new window.AudioContext();//|| window.webkitAudioContext)();  // Create audio context
     const musicPaths = ["1.mp3", "8.mp3", "9.mp3"];
@@ -53,15 +53,13 @@ function AudioSphere5() {
         camera.attachControl(canvasRef.current, true);
         const light = new HemisphericLight("light", new Vector3(1, 1, 0), scene);
 
-        //const spheres = [];
-        musicPaths.forEach(async (path, index) => {
-            if (!isCancelled) {
+        const setupSpheres = async () => {
+            const spherePromises = musicPaths.map(async (path, index) => {
                 const sphere = MeshBuilder.CreateSphere(`sphere${index}`, { diameter: 2 }, scene);
                 sphere.musicPath = path;
                 sphere.position = new Vector3(index * 6, 0, 0);
                 const material = new StandardMaterial("material" + index, scene);
                 sphere.material = material;
-                console.log(sphere.musicPath);
 
                 const audioProps = await setupAudio(audioContext, sphere.musicPath);
                 sphere.audio = audioProps.source;
@@ -99,16 +97,24 @@ function AudioSphere5() {
                         animations.forEach(anim => scene.beginDirectAnimation(sphere, [anim], 0, totalFrames, true));
                         //ここのanimation,1テンポ遅れるときがある（最初のマウント時）
                         sphere.isPlaying = true;
-                        console.log(sphere.bpm);
+                        //console.log(sphere.bpm);
+                        console.log(index);
                     } else {
                         sphere.audio.stop();
                         sphere.isPlaying = false;
                     }
                 }));//ここのsphere再生ロジックは保留(クリックの度にaudioPropsが生成されるため、sphere.audio.stopにアクセスできない)
                 spheres.current.push(sphere);
+                return sphere;
+            });
 
+            return await Promise.all(spherePromises);
+        };
+
+        const setUpIcospheres = (spheres) => {
+            spheres.forEach((sphere, index) => {
                 const icosphere = MeshBuilder.CreateIcoSphere(`icosphere${index}`, { radius: 4, subdivisions: 5 }, scene);
-                icosphere.position = new Vector3(index * 6, 0, 0);
+                icosphere.position = sphere.position;
                 const shaderMaterial = new ShaderMaterial(
                     'sampleShader' + index,
                     scene,
@@ -121,24 +127,22 @@ function AudioSphere5() {
                         uniforms: ['worldViewProjection'],
                     }
                 );
-                shaderMaterial.backFaceCulling = false; // If you want to show backfaces in wireframe
+                shaderMaterial.backFaceCulling = false;
                 shaderMaterial.fillMode = Material.WireFrameFillMode;
                 icosphere.material = shaderMaterial;
-                icospheres.current.push({
-                    icosphere: icosphere,
-                    material: shaderMaterial
-                });
+                shaderMaterial.setFloat('u_time', 0.5);
+
                 icosphere.actionManager = new ActionManager(scene);
                 icosphere.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPickTrigger, async () => {
                     console.log(index);
                 }));
-                /*shaderMaterial.setFloat("u_high_frequency", 50.0);
-                shaderMaterial.setFloat("u_low_frequency", 50.0);
-                shaderMaterial.setFloat("u_red", 50.0 / 255);
-                shaderMaterial.setFloat("u_green", 50 / 255);
-                shaderMaterial.setFloat("u_blue", 30 / 255);
-                shaderMaterial.setFloat("u_time", 5);*/
-            }
+                icosphere.index = index;
+                icospheres.current.push(icosphere);
+            });
+        };
+
+        setupSpheres().then(spheres => {
+            if (!isCancelled) { setUpIcospheres(spheres); }
         });
 
         engine.runRenderLoop(() => {
@@ -156,33 +160,32 @@ function AudioSphere5() {
                     let blueIntensity = 1 - colorIntensity;
                     sphere.material.diffuseColor = new Color3(redIntensity, greenIntensity, blueIntensity);
 
+                    sphere.index = i;
+
                     //元のコードでの波長処理（視覚化のところなので、あとで調整する）
                     let allFreqAverage = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
                     let lowFreqAverage = dataArray.slice(0, bufferLength / 2).reduce((a, b) => a + b, 0) / (bufferLength / 2);
                     let highFreqAverage = dataArray.slice(bufferLength / 2).reduce((a, b) => a + b, 0) / (bufferLength / 2);
-                    //let changLowFreq = Math.abs(lowFreqAverage - previouseLowFreqAverage);
-                    //let lowFreqAverageEmphasis = changLowFreq * 10.0 * 2.0;
-                    //previouseLowFreqAverage = lowFreqAverage;
-                    console.log("lowFreqAverage: ", lowFreqAverage);
-                    console.log("highFreqAverage: ", highFreqAverage);
-                    console.log("allFreqAverage: ", allFreqAverage);
-                    console.log(`Analyzing sphere at index: ${i}`);
-
-                    if (icospheres.current[i]) {
-                        let icosphere = icospheres.current[i];
-                        let shaderMaterial = icosphere.material;
-                        if (shaderMaterial) {
-                            console.log(`Updating shader material for icosphere at index: ${i}`);
-                            shaderMaterial.setFloat("u_low_frequency", lowFreqAverage);
-                            shaderMaterial.setFloat("u_high_frequency", highFreqAverage);
-                            shaderMaterial.setFloat("u_all_frequency", allFreqAverage);
-                            shaderMaterial.setFloat("u_red", lowFreqAverage / 255);
-                            shaderMaterial.setFloat("u_green", lowFreqAverage / 255);
-                            shaderMaterial.setFloat("u_blue", lowFreqAverage / 255);
-                            shaderMaterial.setFloat("u_time", currentTime);
-                        }
-                    }
+                    sphere.allFreqAverage = allFreqAverage;
+                    sphere.lowFreqAverage = lowFreqAverage;
+                    sphere.highFreqAverage = highFreqAverage;
                 }
+            });
+
+            icospheres.current.forEach((icosphere, index) => {
+                icosphere.index = index;
+                const sphere = spheres.current[index];
+                //const sphere = spheres.current[icosphere.index];
+                if (sphere.isPlaying) {
+                    console.log(`Sphere[${sphere.index}]のlowFreqAverage: `, sphere.lowFreqAverage);
+                };
+                let timeScale = 0.1;
+                if (icosphere.index === 1) {
+                    timeScale = 0.5;
+                } else if (icosphere.index === 2) {
+                    timeScale = 0.8;
+                }
+                icosphere.material.setFloat("u_time", currentTime * timeScale * 10.0);
             });
 
             scene.render();
@@ -203,4 +206,4 @@ function AudioSphere5() {
 
 }
 
-export default AudioSphere5;
+export default AudioSphere6;
