@@ -19,7 +19,7 @@ import { guess } from 'web-audio-beat-detector';
 import vertShader from './shaders/sampleShader.vert?raw';
 import fragShader from './shaders/sampleShader.frag?raw';
 
-function AudioSphere7() {
+function AudioSphere9() {
     const canvasRef = useRef(null);
     const audioContext = new window.AudioContext();//|| window.webkitAudioContext)();  // Create audio context
     const musicPaths = ["1.mp3", "3.mp3"];//, "5.mp3", "8.mp3", "9.mp3"];
@@ -54,7 +54,7 @@ function AudioSphere7() {
         const engine = new Engine(canvasRef.current, true);
         const scene = new Scene(engine);
 
-        const camera = new ArcRotateCamera("camera", Math.PI / 3, Math.PI / 2.2, 80, Vector3.Zero(), scene);
+        const camera = new ArcRotateCamera("camera", Math.PI / 2, Math.PI / 2, 20, Vector3.Zero(), scene);
         camera.attachControl(canvasRef.current, true);
         const light = new HemisphericLight("light", new Vector3(1, 1, 0), scene);
 
@@ -71,7 +71,7 @@ function AudioSphere7() {
             const icospherePromises = musicPaths.map(async (path, index) => {
                 const icosphere = MeshBuilder.CreateIcoSphere(`sphere${index}`, { radius: 4, subdivisions: 5 }, scene);
                 icosphere.musicPath = path;
-                icosphere.position = new Vector3(index * 12, 0, 60);
+                icosphere.position = new Vector3(index * 12, 0, 60); //z軸
                 const shaderMaterial = new ShaderMaterial(
                     'sampleShader' + index,
                     scene,
@@ -142,31 +142,22 @@ function AudioSphere7() {
                     return animation;
                 });
                 //ここまで
-                icosphere.isOnOrigin = false;
 
                 let isPlaying = false;
                 icosphere.actionManager = new ActionManager(scene);
                 icosphere.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPickTrigger, async () => {
                     if (!isPlaying) {
                         icosphere.audio.start();
+                        //animations.forEach(anim => scene.beginDirectAnimation(sphere, [anim], 0, totalFrames, true));
                         //ここのanimation,1テンポ遅れるときがある（最初のマウント時）
                         icosphere.isPlaying = true;
                         console.log(icosphere.bpm);
                         console.log(`Sphere[${childSphere.index}]のbpm: `, childSphere.bpm);
                         console.log(index);
                         animations.forEach(anim => scene.beginDirectAnimation(childSphere, [anim], 0, totalFrames, true));
-                        //ここから試みてみる
-                        if (!icosphere.isOnOrigin) {
-                            icosphere.position = new Vector3(0, 0, 0);
-                            icosphere.scaling = new Vector3(5, 5, 5);
-                            icosphere.isOnOrigin = true;
-                        }
                     } else {
                         icosphere.audio.stop();
                         icosphere.isPlaying = false;
-                        if (icosphere.isOnorigin) {
-                            icosphere.isOrigin = false;
-                        }
                     }
                 }));//ここのsphere再生ロジックは保留(クリックの度にaudioPropsが生成されるため、sphere.audio.stopにアクセスできない)
                 icospheres.current.push(icosphere);
@@ -188,11 +179,10 @@ function AudioSphere7() {
             });
         };
         const transformBall = (icosphere) => {
-            icosphere.position.z -= 0.05;
-            if (icosphere.position.z < 0) {
-                icosphere.position.z = 60;
+            icosphere.position.z += 0.05;
+            if (icosphere.position.z > 100) {
+                icosphere.position.z = 0;
             }
-            icosphere.gain.gain.value += 0.001;
         };
 
         engine.runRenderLoop(() => {
@@ -256,4 +246,4 @@ function AudioSphere7() {
 
 }
 
-export default AudioSphere7;
+export default AudioSphere9;

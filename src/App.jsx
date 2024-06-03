@@ -7,10 +7,12 @@ import AudioSphere5 from './AudioVisualize5';
 import AudioSphere6 from './AudioVisualize6';
 import AudioSphere7 from './AudioVisualize7';
 import AudioSphere8 from './AudioVisualize8';
+import AudioSphere9 from './AudioVisualize9';
+import AudioSphere10 from './AudioVisualize10';
 
 function App() {
   return (
-    < AudioSphere7 />
+    < AudioSphere8 />
   );
 }
 
