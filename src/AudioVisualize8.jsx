@@ -244,7 +244,7 @@ function AudioSphere8() {
             icospheres.current.forEach((icosphere, i) => {
                 icosphere.startTime = currentTime + Math.random() * 5;
                 console.log("icosphere.startTime", icosphere.startTime);
-                if (!icosphere.isPlaying && icosphere.startTime < currentTime) {
+                if (!icosphere.isPlaying) {
                     transformBall(icosphere, i);
                 }
                 else if (icosphere.isPlaying) {
