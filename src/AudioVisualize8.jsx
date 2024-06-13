@@ -15,6 +15,7 @@ import {
     ExecuteCodeAction,
     Sound,
     Analyser,
+    Angle,
 } from '@babylonjs/core';
 import '@babylonjs/loaders';
 import { guess } from 'web-audio-beat-detector';
@@ -23,7 +24,7 @@ import fragShader from './shaders/sampleShader.frag?raw';
 
 function AudioSphere8() {
     const canvasRef = useRef(null);
-    const musicPaths = ["1.mp3", "3.mp3"];
+    const musicPaths = ["1.mp3", "2.mp3", "3.mp3"];
     const icospheres = useRef([]);
     let currentTime = 0.0;
     const timeIncrement = 0.01;
@@ -70,10 +71,11 @@ function AudioSphere8() {
 
         const setupIcoSpheres = async () => {
             const icospherePromises = musicPaths.map(async (path, index) => {
-                const icosphere = MeshBuilder.CreateIcoSphere(`sphere${index}`, { radius: 4, subdivisions: 5 }, scene);
+                const icosphere = MeshBuilder.CreateIcoSphere(`sphere${index}`, { radius: 4, subdivisions: 7 }, scene);
 
+                icosphere.index = index;
                 icosphere.musicPath = path;
-                icosphere.position = new Vector3(index * 12, 0, 0);
+                icosphere.position = new Vector3(index * 12, 0, 100);
                 const material = new StandardMaterial(`material${index}`, scene);
                 material.diffuseColor = new Color3(1, 0, 0);
                 const shaderMaterial = new ShaderMaterial(
@@ -117,6 +119,7 @@ function AudioSphere8() {
                 music.maxDistance = 50; // 最大聞こえる距離
                 music.distanceModel = 'linear'; // 距離減衰モデル
                 music.attachToMesh(icosphere);
+                icosphere.audio = music;
 
                 icosphere.isPlaying = false;
                 sphere.actionManager = new ActionManager(scene);
@@ -162,8 +165,8 @@ function AudioSphere8() {
                         }
                     }
                 }));//ここのsphere再生ロジックは保留(クリックの度にaudioPropsが生成されるため、sphere.audio.stopにアクセスできない)
-                icosphere.actionManager = new ActionManager(scene);
-                icosphere.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPickTrigger, async () => {
+                icosphere2.actionManager = new ActionManager(scene);
+                icosphere2.actionManager.registerAction(new ExecuteCodeAction(ActionManager.OnPickTrigger, async () => {
                     if (music.isPlaying) {
                         music.pause();
                         icosphere.isPlaying = false;
@@ -192,10 +195,21 @@ function AudioSphere8() {
                 }
             });
         };
-        const transformBall = (icosphere) => {
-            icosphere.position.z += 0.05;
-            if (icosphere.position.z > 100) {
-                icosphere.position.z = 0;
+        const transformBall = (icosphere, i) => {
+            const velocity = 10;
+            icosphere.position.z -= 0.05 * velocity;
+            const radius = 10;
+            const angle = Math.PI / 3;
+            const targetX = radius * Math.cos(angle * i);
+            const targetY = radius * Math.sin(angle * i);
+            const forwardY = targetY * 0.05 / 100 * velocity;
+            const forwardX = targetX * 0.05 / 100 * velocity;
+            icosphere.position.x += forwardX;
+            icosphere.position.y += forwardY;
+            if (icosphere.position.z < 0) {
+                icosphere.position.z = 100;
+                icosphere.position.x = 0;
+                icosphere.position.y = 0;
             }
         };
 
@@ -228,8 +242,10 @@ function AudioSphere8() {
 
             //transformBalls(icospheres.current);
             icospheres.current.forEach((icosphere, i) => {
-                if (!icosphere.isPlaying) {
-                    transformBall(icosphere);
+                icosphere.startTime = currentTime + Math.random() * 5;
+                console.log("icosphere.startTime", icosphere.startTime);
+                if (!icosphere.isPlaying && icosphere.startTime < currentTime) {
+                    transformBall(icosphere, i);
                 }
                 else if (icosphere.isPlaying) {
                     icosphere.material.setFloat('u_time', currentTime);

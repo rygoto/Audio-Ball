@@ -62,10 +62,7 @@ function AudioSphere7() {
             uiOptions: {
                 sessionMode: 'immersive-ar',
             },
-        });/*.then((experience) => {
-            camera = experience.baseExperience.camera;  // XRカメラを使用
-            //sphere.position = camera.getFrontPosition(2);  // カメラの前方2mに配置
-        });*/
+        });
 
         const setupIcoSpheres = async () => {
             const icospherePromises = musicPaths.map(async (path, index) => {
