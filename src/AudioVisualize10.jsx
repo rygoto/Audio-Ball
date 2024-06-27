@@ -27,7 +27,7 @@ import { guess } from 'web-audio-beat-detector';
 import vertShader from './shaders/sampleShader.vert?raw';
 import fragShader from './shaders/sampleShader.frag?raw';
 
-function AudioSphere9() {
+function AudioSphere10() {
     const canvasRef = useRef(null);
     const musicPaths = ["2.mp3", "8.mp3", "3.mp3"];
     const icospheres = useRef([]);
@@ -309,4 +309,4 @@ function AudioSphere9() {
 
 }
 
-export default AudioSphere9;
+export default AudioSphere10;
